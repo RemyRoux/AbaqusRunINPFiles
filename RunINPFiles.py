@@ -36,13 +36,10 @@ except ImportError:
 ###############################################################################
 
 TopLocation     = 'E:\\Consult\\'
-defAbqVersion   = 'abq2018'
+defAbqVersion   = ['abq2018hf3','abq2018','abq2017','abq2016','abq6141']
 defCpusNumb     = '6'
 defGpusNumb     = '1'
 
-
-#fExportConsole = open(TopLocation+'test.txt','w')
-#sys.stdout = fExportConsole
 
 ###############################################################################
 ## CLASSES DEFINITION #########################################################
@@ -554,13 +551,13 @@ class App(Frame):
         abqVersionLabel = Label(self, text='Abaqus version: ')
         abqVersionLabel.grid(row=incrementLoc, column=0, pady=10, ipady=1)
         createToolTip(abqVersionLabel, 
-                      "Version of Abaqus to be used: 'abq6141', 'abq2016', 'abq2017' or 'abq2018'")
+                      "Version of Abaqus to be used: "+', '.join(defAbqVersion))
        # Select Version
         self.abqVersion = Entry(self)
-        self.abqVersion.insert(END, defAbqVersion)
+        self.abqVersion.insert(END, defAbqVersion[0])
         self.abqVersion.grid(row=incrementLoc, column=1)
         createToolTip(self.abqVersion, 
-                      "Version of Abaqus to be used: 'abq6141', 'abq2016', 'abq2017' or 'abq2018'")
+                      "Version of Abaqus to be used: "+', '.join(defAbqVersion))
         
         ## Run all file in Folder
         # Button
@@ -761,10 +758,7 @@ class App(Frame):
 ###############################################################################
     def runQueueFunc(self):
         """Run the Files written in the File List"""
-        if (self.abqVersion.get() == 'abq2016' 
-                or self.abqVersion.get() == 'abq2017' 
-                or self.abqVersion.get() == 'abq6141'
-                or self.abqVersion.get() == 'abq2018'):
+        if (self.abqVersion.get() in defAbqVersion):
             
             self.runQueueButton.config(state=DISABLED,text='Queue Running')
             self.queue  = Queue.Queue()
@@ -773,7 +767,7 @@ class App(Frame):
             ThreadedTask(self.queue,self).start()                               # Instantiate and launch the parallel thread
             self.master.after(100, self.process_queue)
         else:
-            self.displayErrorWindow('Please select a valid abaqus version: \n abq6141, abq2016, abq2017 or abq2018')
+            self.displayErrorWindow('Please select a valid abaqus version: \n '+', '.join(defAbqVersion))
 
 ###############################################################################
     def process_queue(self):
