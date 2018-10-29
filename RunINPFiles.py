@@ -37,8 +37,10 @@ except ImportError:
 ###############################################################################
 ## INITIAL PARAMETERS #########################################################
 ###############################################################################
-51395
+
 TopLocation     = 'E:\\Consult\\'
+if os.path.isdir(TopLocation) != True:
+    TopLocation = 'D:\\Consult\\'
 defAbqVersion   = ['abq2018hf3','abq2018','abq2017','abq2016','abq6141']
 defCpusNumb     = '6'
 defGpusNumb     = '1'
