@@ -45,7 +45,10 @@ defAbqVersion   = ['abq2018hf3','abq2018','abq2017','abq2016','abq6141']
 defCpusNumb     = '6'
 defGpusNumb     = '1'
 
-logging.basicConfig(filename=TopLocation+'error_RunINPFile.log', filemode='a+', level=logging.DEBUG)
+# Logging errors to a separate file
+logging.basicConfig(filename=TopLocation+'error_RunINPFile.log', 
+                    filemode='a+', 
+                    level=logging.DEBUG)
 logger = logging.getLogger()
 logger.info('\n\n\n'+'+'*50+'\n'+'+'*50+'\nStart Log: '+str(datetime.datetime.now()))
 
@@ -241,7 +244,7 @@ class ThreadedTask(threading.Thread):
                 pass
             
             try:
-                jobToRun = checkJobList(self)                                       # Determine the job to be run
+                jobToRun = checkJobList(self)                                   # Determine the job to be run
             except:
                 pass
             
@@ -262,10 +265,10 @@ class ThreadedTask(threading.Thread):
             a = None
             
             for job in self.jobArraySorted:
-                if (job.name == jobToRun.name and a == None):                    # Put a hash in front of the first job 
+                if (job.name == jobToRun.name and a == None):                   # Put a hash in front of the first job 
                     newJobList = newJobList+'#'+job.name+\
                         '||'+job.path+'||'+job.cpus+'||'+\
-                        job.gpus+'||'+job.prio+'||'+job.res+'\n'                             # corresponding to the job to run
+                        job.gpus+'||'+job.prio+'||'+job.res+'\n'                # corresponding to the job to run
                     a = 1
                 else:
                     newJobList = newJobList+job.name+\
@@ -276,7 +279,7 @@ class ThreadedTask(threading.Thread):
             ## Report
             print('\n\n'+jobToRun.name+ ' launched')
             
-            with open(TopLocation+'LogFile.txt','a') as f:                     # Write in Report File (Log File)
+            with open(TopLocation+'LogFile.txt','a') as f:                      # Write in Report File (Log File)
                 f.write('\n\n'+'-'*50+'\n'+jobToRun.name+
                     ' launched on '+
                     time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())+
@@ -372,7 +375,7 @@ class ThreadedTask(threading.Thread):
             f.write(str(self.root.QueueRunning))
         
         if resumedQueue == False:
-            self.queue.put("Task finished")                                         # End the threaded task
+            self.queue.put("Task finished")                                     # End the threaded task
             
             try:
                 if (newJobList!='' or jobList!=''):
@@ -389,7 +392,7 @@ class ThreadedTask(threading.Thread):
             
             try:
                 if (newJobList!='' or jobList!=''):
-                    os.system("start "+TopLocation+'LogFile.txt')                   # Open the report file in a window
+                    os.system("start "+TopLocation+'LogFile.txt')               # Open the report file in a window
             except UnboundLocalError:
                 print('The job queue was empty.')
                 pass
@@ -774,7 +777,7 @@ class App(Frame):
             self.runQueueButton.config(state=DISABLED,text='Queue Running')
             self.queue  = Queue.Queue()
             
-            jobList     =self.fileList.get("1.0",END)                               # Read the console
+            jobList     =self.fileList.get("1.0",END)                           # Read the console
             ThreadedTask(self.queue,self).start()                               # Instantiate and launch the parallel thread
             self.master.after(100, self.process_queue)
         else:
@@ -1246,9 +1249,9 @@ class App(Frame):
             
             textBoxChanged=False
             try:
-                self.jobListTextBox = self.fileList.get("1.0",END)                     # Read the console
+                self.jobListTextBox = self.fileList.get("1.0",END)              # Read the console
                 if self.jobListTextBoxBuffer != self.jobListTextBox:
-                    with open(TopLocation+'JobList.txt','w') as f:                  # Import the job list in the text file
+                    with open(TopLocation+'JobList.txt','w') as f:              # Import the job list in the text file
                         f.write(self.jobListTextBox)
                         textBoxChanged=True
                 self.jobListTextBoxBuffer=self.jobListTextBox
