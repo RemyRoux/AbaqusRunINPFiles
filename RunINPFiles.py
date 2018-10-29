@@ -5,7 +5,7 @@ Created on Mon Mar 27 14:31:12 2017
 @author: feas
 """
 from __future__ import print_function
-import os,time
+import os,time,sys
 from Tkinter import *
 import Tkconstants, tkFileDialog
 from ttk import Frame, Label, Entry, Separator
@@ -17,6 +17,9 @@ import shutil
 import unicodedata
 import psutil
 import signal
+import logging
+import datetime
+import traceback
 
 
 PygtailImport=None
@@ -36,9 +39,22 @@ except ImportError:
 ###############################################################################
 
 TopLocation     = 'E:\\Consult\\'
+
+if os.path.isdir(TopLocation) != True:
+    TopLocation = 'D:\\Consult\\'
+
 defAbqVersion   = ['abq2018hf3','abq2018','abq2017','abq2016','abq6141']
 defCpusNumb     = '6'
 defGpusNumb     = '1'
+
+# Logging errors to a separate file
+logging.basicConfig(filename=TopLocation+'error_RunINPFile.log', 
+                    filemode='a+', 
+                    level=logging.DEBUG)
+logger = logging.getLogger()
+logger.info('\n\n\n'+'+'*50+'\n'+'+'*50+'\nStart Log: '+str(datetime.datetime.now()))
+
+
 
 
 ###############################################################################
@@ -230,7 +246,7 @@ class ThreadedTask(threading.Thread):
                 pass
             
             try:
-                jobToRun = checkJobList(self)                                       # Determine the job to be run
+                jobToRun = checkJobList(self)                                   # Determine the job to be run
             except:
                 pass
             
@@ -251,10 +267,10 @@ class ThreadedTask(threading.Thread):
             a = None
             
             for job in self.jobArraySorted:
-                if (job.name == jobToRun.name and a == None):                    # Put a hash in front of the first job 
+                if (job.name == jobToRun.name and a == None):                   # Put a hash in front of the first job 
                     newJobList = newJobList+'#'+job.name+\
                         '||'+job.path+'||'+job.cpus+'||'+\
-                        job.gpus+'||'+job.prio+'||'+job.res+'\n'                             # corresponding to the job to run
+                        job.gpus+'||'+job.prio+'||'+job.res+'\n'                # corresponding to the job to run
                     a = 1
                 else:
                     newJobList = newJobList+job.name+\
@@ -265,7 +281,7 @@ class ThreadedTask(threading.Thread):
             ## Report
             print('\n\n'+jobToRun.name+ ' launched')
             
-            with open(TopLocation+'LogFile.txt','a') as f:                     # Write in Report File (Log File)
+            with open(TopLocation+'LogFile.txt','a') as f:                      # Write in Report File (Log File)
                 f.write('\n\n'+'-'*50+'\n'+jobToRun.name+
                     ' launched on '+
                     time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())+
@@ -361,7 +377,7 @@ class ThreadedTask(threading.Thread):
             f.write(str(self.root.QueueRunning))
         
         if resumedQueue == False:
-            self.queue.put("Task finished")                                         # End the threaded task
+            self.queue.put("Task finished")                                     # End the threaded task
             
             try:
                 if (newJobList!='' or jobList!=''):
@@ -378,7 +394,7 @@ class ThreadedTask(threading.Thread):
             
             try:
                 if (newJobList!='' or jobList!=''):
-                    os.system("start "+TopLocation+'LogFile.txt')                   # Open the report file in a window
+                    os.system("start "+TopLocation+'LogFile.txt')               # Open the report file in a window
             except UnboundLocalError:
                 print('The job queue was empty.')
                 pass
@@ -460,7 +476,7 @@ class App(Frame):
             p = psutil.Process(proc)
             try:
                 p.name()
-            except phutil.AccessDenied:
+            except psutil.AccessDenied:
                 continue
             if (p.name()=='standard.exe' or p.name()=='explicit.exe' or p.name()=='pre.exe' or p.name()=='explicit_dp.exe'):
                 i=0
@@ -763,7 +779,7 @@ class App(Frame):
             self.runQueueButton.config(state=DISABLED,text='Queue Running')
             self.queue  = Queue.Queue()
             
-            jobList     =self.fileList.get("1.0",END)                               # Read the console
+            jobList     =self.fileList.get("1.0",END)                           # Read the console
             ThreadedTask(self.queue,self).start()                               # Instantiate and launch the parallel thread
             self.master.after(100, self.process_queue)
         else:
@@ -1167,7 +1183,7 @@ class App(Frame):
         try:
             os.kill(int(pid), signal.SIGTERM)
         except WindowsError:
-            displayErrorWindow("The process that you selected is no longer in use.")
+            self.displayErrorWindow("The process that you selected is no longer in use.")
         self.killWindow.destroy()
     
 ###############################################################################
@@ -1235,9 +1251,9 @@ class App(Frame):
             
             textBoxChanged=False
             try:
-                self.jobListTextBox = self.fileList.get("1.0",END)                     # Read the console
+                self.jobListTextBox = self.fileList.get("1.0",END)              # Read the console
                 if self.jobListTextBoxBuffer != self.jobListTextBox:
-                    with open(TopLocation+'JobList.txt','w') as f:                  # Import the job list in the text file
+                    with open(TopLocation+'JobList.txt','w') as f:              # Import the job list in the text file
                         f.write(self.jobListTextBox)
                         textBoxChanged=True
                 self.jobListTextBoxBuffer=self.jobListTextBox
@@ -1296,14 +1312,30 @@ class App(Frame):
             - Synchronize the job list of the first console and the job list of the text file\
             """
             
-
+            
+            
+            
+            
+###############################################################################
+# Handles the exceptions in the general code
+    def my_handler(type,value,tb):
+        logger.exception("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+        print("Uncaught exception at line %s: %s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+    sys.excepthook = my_handler
 
 
 def main():
-    
+###############################################################################
+# Handles the exceptions in the TkInter instance
+    def handle_TkInter_exception(type,value,tb):
+        logger.exception("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+        print("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
     root = Tk()
     app = App(root)
+    root.report_callback_exception=handle_TkInter_exception                     # Report the callback when an exception is raised
     root.mainloop()
+    
+    
     
 if __name__ == '__main__':
         main()
