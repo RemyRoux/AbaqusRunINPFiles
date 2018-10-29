@@ -5,7 +5,10 @@ GUI to handle job queues in Abaqus
   - Abaqus, PIP
   
 # Customization: 
-Please adapt lines 38 to 41 to match your preferences.
+Line 38: Enter the folder.
+line 39: Append the current abaqus version as first value of the list.
+line 40: Enter the max number of cpus of your machine. 
+line 41: Enter the max number of gpus of your machine. 
 
 # Usage:
 1. Add a job in the queue:
