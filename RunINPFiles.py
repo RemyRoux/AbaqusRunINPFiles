@@ -5,7 +5,7 @@ Created on Mon Mar 27 14:31:12 2017
 @author: feas
 """
 from __future__ import print_function
-import os,time
+import os,time,sys
 from Tkinter import *
 import Tkconstants, tkFileDialog
 from ttk import Frame, Label, Entry, Separator
@@ -17,6 +17,9 @@ import shutil
 import unicodedata
 import psutil
 import signal
+import logging
+import datetime
+import traceback
 
 
 PygtailImport=None
@@ -34,11 +37,17 @@ except ImportError:
 ###############################################################################
 ## INITIAL PARAMETERS #########################################################
 ###############################################################################
-
+51395
 TopLocation     = 'E:\\Consult\\'
 defAbqVersion   = ['abq2018hf3','abq2018','abq2017','abq2016','abq6141']
 defCpusNumb     = '6'
 defGpusNumb     = '1'
+
+logging.basicConfig(filename=TopLocation+'error_RunINPFile.log', filemode='a+', level=logging.DEBUG)
+logger = logging.getLogger()
+logger.info('\n\n\n'+'+'*50+'\n'+'+'*50+'\nStart Log: '+str(datetime.datetime.now()))
+
+
 
 
 ###############################################################################
@@ -1167,7 +1176,7 @@ class App(Frame):
         try:
             os.kill(int(pid), signal.SIGTERM)
         except WindowsError:
-            displayErrorWindow("The process that you selected is no longer in use.")
+            self.displayErrorWindow("The process that you selected is no longer in use.")
         self.killWindow.destroy()
     
 ###############################################################################
@@ -1296,14 +1305,30 @@ class App(Frame):
             - Synchronize the job list of the first console and the job list of the text file\
             """
             
-
+            
+            
+            
+            
+###############################################################################
+# Handles the exceptions in the general code
+    def my_handler(type,value,tb):
+        logger.exception("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+        print("Uncaught exception at line %s: %s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+    sys.excepthook = my_handler
 
 
 def main():
-    
+###############################################################################
+# Handles the exceptions in the TkInter instance
+    def handle_TkInter_exception(type,value,tb):
+        logger.exception("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
+        print("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
     root = Tk()
     app = App(root)
+    root.report_callback_exception=handle_TkInter_exception                     # Report the callback when an exception is raised
     root.mainloop()
+    
+    
     
 if __name__ == '__main__':
         main()
