@@ -149,7 +149,6 @@ class ThreadedTask(threading.Thread):
                 #print('job= '+job.name)
                 if (len(job.name.split('#'))<2 and jobToRun == None):
                     jobToRun = job
-
             return jobToRun
 
 ###############################################################################
@@ -179,7 +178,7 @@ class ThreadedTask(threading.Thread):
                     '-'*50+'\n')
         # <>
         while Loop:                                                             # Main thread loop
-
+        
             waitPreviousJobs=True
             try:
                 del jobToRun
@@ -937,14 +936,14 @@ class App(Frame):
                         inpFile = f.readlines()
                         for line in inpFile:
                             inpFileStr = inpFileStr+line
-                    self.dispMsgFile(inpFileStr,'msg',proc['inp'])
+                    self.dispMsgFile(inpFileStr,'msg',proc['dir'],proc['inp'])
                 elif proc['kind']=='explicit.exe' or proc['kind']=='explicit_dp.exe':
                     inpFileStr=''
                     with open(proc['dir']+'\\'+proc['inp']+'.sta') as f:
                         inpFile = f.readlines()
                         for line in inpFile:
                             inpFileStr = inpFileStr+line
-                    self.dispMsgFile(inpFileStr,'sta',proc['inp'])
+                    self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
                 elif proc['kind']=='pre.exe':
                     self.displayErrorWindow('Please wait for %s.msg to be created'%proc['inp'],destroy=False)
 
@@ -965,11 +964,11 @@ class App(Frame):
                 logFile= f.readlines()
                 for line in logFile:
                     logFileStr = logFileStr+line
-                self.dispMsgFile(logFileStr,'log')
+                self.dispMsgFile(logFileStr,'log','')
         else:
             with open(TopLocation+'LogFile.txt','w') as f:
                 f.write('')
-            self.dispMsgFile(logFileStr,'log')
+            self.dispMsgFile(logFileStr,'log','')
             
             
             
@@ -985,7 +984,7 @@ class App(Frame):
         
         with open(TopLocation+'LogFile.txt','w') as f:
             f.write('')
-        self.dispMsgFile('','log')
+        self.dispMsgFile('','log','')
 
 ###############################################################################
     def tailStaFile(self):
@@ -1015,7 +1014,7 @@ class App(Frame):
                             inpFile = f.readlines()
                             for line in inpFile:
                                 inpFileStr = inpFileStr+line
-                        self.dispMsgFile(inpFileStr,'sta',proc['inp'])
+                        self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
                     except:
                         self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
                 elif proc['kind']=='explicit.exe' or proc['kind']=='explicit_dp.exe':
@@ -1025,21 +1024,21 @@ class App(Frame):
                             inpFile = f.readlines()
                             for line in inpFile:
                                 inpFileStr = inpFileStr+line
-                        self.dispMsgFile(inpFileStr,'sta',proc['inp'])
+                        self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
                     except:
                         self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
                 elif proc['kind']=='pre.exe':
                     self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
 
 ###############################################################################
-    def dispMsgFile(self, msgFileStr,File,NameFile='File'):
+    def dispMsgFile(self, msgFileStr,fileType,Path,fileName='File'):
         """Display the content of the msg file, sta file or log file"""
         
         
         # Create the window
         self.dispMsgFileWindow.append(Toplevel(self))
         try:
-            self.dispMsgFileWindow[self.incrementMsgFile].title('Job Name: %s'%NameFile)
+            self.dispMsgFileWindow[self.incrementMsgFile].title('Job Name: %s'%fileName)
         except AttributeError:
             self.incrementMsgFile = 0
         except IndexError:
@@ -1049,26 +1048,28 @@ class App(Frame):
         scrollbar   = Scrollbar(self.dispMsgFileWindow[self.incrementMsgFile])
         scrollbar.pack(side=RIGHT, fill=Y)
         
-        listbox     = Text(self.dispMsgFileWindow[self.incrementMsgFile], yscrollcommand=scrollbar.set, height='25', width='90')
-        listbox.insert(INSERT, msgFileStr)
-        listbox.see(END)
-        listbox.pack(side=LEFT, fill=BOTH)
-        scrollbar.config(command=listbox.yview)
+        self.listbox = []
+        self.listbox.append(Text(self.dispMsgFileWindow[self.incrementMsgFile], yscrollcommand=scrollbar.set, height='25', width='90'))
+        self.listbox[self.incrementMsgFile].insert(INSERT, msgFileStr)
+        self.listbox[self.incrementMsgFile].see(END)
+        self.listbox[self.incrementMsgFile].pack(side=LEFT, fill=BOTH)
+        scrollbar.config(command=self.listbox[self.incrementMsgFile].yview)
         
-        okButton    = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='OK',
-                             command=self.dispMsgFileWindow[self.incrementMsgFile].destroy)
+        inc = self.incrementMsgFile
+        okButton    = Button(self.dispMsgFileWindow[inc], text='OK',
+                             command= lambda: self.destroyTailedFile(inc))
         okButton.pack(padx=10,pady=10)
         
         # Fill the window with the texts
-        if File     =='sta':
-            updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Update',
-                command=self.tailStaFile)
+        if fileType     =='sta':
+            updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Tail STA',
+                command=lambda: self.buttonFunc(msgFileStr,fileType,Path,fileName,inc))
             updateButton.pack(padx=10,pady=10)
-        elif File   =='msg':
-            updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Update',
-                command=self.tailMsgFile)
+        elif fileType   =='msg':
+            updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Tail MSG',
+                command=lambda: self.buttonFunc(msgFileStr,fileType,Path,fileName,inc))
             updateButton.pack(padx=10,pady=10)
-        elif File   =='log':
+        elif fileType   =='log':
             updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Update',
                 command=self.tailLogFile)
             updateButton.pack(padx=10,pady=10)
@@ -1300,22 +1301,29 @@ class App(Frame):
             self.after(40,self.update, self.q)
             
 ###############################################################################
-    def updateFileQueue(self,parent):
-        self.uFQ.put('')
+    def destroyTailedFile(self,inc):
+        self.tailq.put('Stop Tailing')
+        del self.tailq
+        self.dispMsgFileWindow[inc].destroy()
+        
+###############################################################################
+    def buttonFunc(self,msgFileStr,fileType,Path,fileName,inc):
+        self.tailq = Queue.Queue()
+        threading.Thread(target=self.updateFileFunc, args=[msgFileStr,fileType,Path,fileName,inc]).start()
     
 ###############################################################################
-    def updateFile(self,parent):
-        """ - Read the list of the running processes on the machine\
-            - Identify the processes that correspond to a job\
-            - Write them in the second console\
-            
-            - Synchronize the job list of the first console and the job list of the text file\
-            """
-            
-            
-            
-            
-            
+    def updateFileFunc(self,msgFileStr,fileType,Path,fileName,inc):
+        while 1:
+            for line in Pygtail(Path+'\\'+fileName+'.'+fileType):
+                try:
+                    self.listbox[inc].insert(END, line)
+                    self.listbox[inc].see(END)
+                    self.tailq.put(line)
+                except:
+                    pass
+            time.sleep(150)
+        
+        
 ###############################################################################
 # Handles the exceptions in the general code
     def my_handler(type,value,tb):
