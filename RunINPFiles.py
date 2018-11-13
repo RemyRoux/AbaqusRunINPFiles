@@ -20,6 +20,8 @@ import signal
 import logging
 import datetime
 import traceback
+#from pathos.multiprocessing import ProcessPool
+from win32api import GetSystemMetrics
 
 
 PygtailImport=None
@@ -1043,18 +1045,17 @@ class App(Frame):
             self.incrementMsgFile = 0
         except IndexError:
             self.incrementMsgFile = 0
-        self.dispMsgFileWindow[self.incrementMsgFile].geometry('900x600+15+15')
+        self.dispMsgFileWindow[self.incrementMsgFile].geometry(str(GetSystemMetrics(0)/2)+'x'+str(GetSystemMetrics(1)-75)+'+0+0')
         
         scrollbar   = Scrollbar(self.dispMsgFileWindow[self.incrementMsgFile])
         scrollbar.pack(side=RIGHT, fill=Y)
         
         self.listbox = []
-        self.listbox.append(Text(self.dispMsgFileWindow[self.incrementMsgFile], yscrollcommand=scrollbar.set, height='25', width='90'))
-        self.listbox[self.incrementMsgFile].insert(INSERT, msgFileStr)
-        self.listbox[self.incrementMsgFile].see(END)
-        self.listbox[self.incrementMsgFile].pack(side=LEFT, fill=BOTH)
-        scrollbar.config(command=self.listbox[self.incrementMsgFile].yview)
-        
+        self.listbox.append(Text(self.dispMsgFileWindow[self.incrementMsgFile], yscrollcommand=scrollbar.set, height='25', width='100'))
+        self.listbox[-1].insert(INSERT, msgFileStr)
+        self.listbox[-1].see(END)
+        self.listbox[-1].pack(side=LEFT, fill=BOTH)
+        scrollbar.config(command=self.listbox[-1].yview)
         inc = self.incrementMsgFile
         okButton    = Button(self.dispMsgFileWindow[inc], text='OK',
                              command= lambda: self.destroyTailedFile(inc))
@@ -1063,11 +1064,11 @@ class App(Frame):
         # Fill the window with the texts
         if fileType     =='sta':
             updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Tail STA',
-                command=lambda: self.buttonFunc(msgFileStr,fileType,Path,fileName,inc))
+                command=lambda: self.buttonFunc(fileType,Path,fileName,inc))
             updateButton.pack(padx=10,pady=10)
         elif fileType   =='msg':
             updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Tail MSG',
-                command=lambda: self.buttonFunc(msgFileStr,fileType,Path,fileName,inc))
+                command=lambda: self.buttonFunc(fileType,Path,fileName,inc))
             updateButton.pack(padx=10,pady=10)
         elif fileType   =='log':
             updateButton = Button(self.dispMsgFileWindow[self.incrementMsgFile], text='Update',
@@ -1302,36 +1303,45 @@ class App(Frame):
             
 ###############################################################################
     def destroyTailedFile(self,inc):
-        self.tailq.put('Stop Tailing')
-        del self.tailq
         self.dispMsgFileWindow[inc].destroy()
         
 ###############################################################################
-    def buttonFunc(self,msgFileStr,fileType,Path,fileName,inc):
-        self.tailq = Queue.Queue()
-        threading.Thread(target=self.updateFileFunc, args=[msgFileStr,fileType,Path,fileName,inc]).start()
-    
+    def buttonFunc(self,fileType,Path,fileName,inc):
+        self.p=threading.Thread(target=self.updateFileFunc, args=[fileType,Path,fileName,inc])
+        self.p.daemon = True
+        self.p.start()
 ###############################################################################
-    def updateFileFunc(self,msgFileStr,fileType,Path,fileName,inc):
+    def updateFileFunc(self,fileType,Path,fileName,inc):
+        upLines=''
+        with open(Path+'\\'+fileName+'.'+fileType,'r') as f:
+            Doc = f.read()
+        self.listbox[inc].delete(1.0,END)
+        self.listbox[inc].insert(END, Doc)
+        self.listbox[inc].see(END)
         while 1:
-            for line in Pygtail(Path+'\\'+fileName+'.'+fileType):
+            with open(Path+'\\'+fileName+'.'+fileType,'r') as f:
+                newDoc=f.read()
+                #if newDoc.startswith(Doc):
+                upLines = newDoc[len(Doc):]
+                newDoc=newDoc+upLines
+                Doc=newDoc
+                time.sleep(0.5)
                 try:
-                    self.listbox[inc].insert(END, line)
+                    self.listbox[inc].insert(END, upLines)
                     self.listbox[inc].see(END)
-                    self.tailq.put(line)
                 except:
+                    break
                     pass
-            time.sleep(150)
-        
-        
-###############################################################################
+                upLines=''
+            
+##################################################s#############################
 # Handles the exceptions in the general code
     def my_handler(type,value,tb):
         logger.exception("Uncaught exception at line %s: \n%s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
         print("Uncaught exception at line %s: %s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
     sys.excepthook = my_handler
-
-
+    
+    
 def main():
 ###############################################################################
 # Handles the exceptions in the TkInter instance
@@ -1342,8 +1352,6 @@ def main():
     app = App(root)
     root.report_callback_exception=handle_TkInter_exception                     # Report the callback when an exception is raised
     root.mainloop()
-    
-    
     
 if __name__ == '__main__':
         main()
