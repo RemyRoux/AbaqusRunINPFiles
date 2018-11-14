@@ -12,9 +12,9 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'Abaqus-RunINPFiles'
+NAME = 'Abaqus_RunINPFiles'
 DESCRIPTION = 'Third-party software to queue Abaqus analyses.'
-URL = 'https://github.com/RemyRoux/Abaqus-RunINPFiles'
+URL = 'https://github.com/RemyRoux/Abaqus_RunINPFiles'
 EMAIL = 'me@example.com'
 AUTHOR = 'Remy Roux'
 REQUIRES_PYTHON = '>=2.7.14'
