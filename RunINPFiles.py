@@ -24,18 +24,6 @@ import traceback
 from win32api import GetSystemMetrics
 
 
-PygtailImport=None
-try:
-    from pygtail import Pygtail
-except ImportError:
-    try:
-        os.system('pip install pygtail')
-        from pygtail import Pygtail
-    except:
-        PygtailImport = False
-        print('Please install PIP and pygtail')
-
-
 ###############################################################################
 ## INITIAL PARAMETERS #########################################################
 ###############################################################################
@@ -164,6 +152,9 @@ class ThreadedTask(threading.Thread):
         
         abqVersion = self.root.abqVersion.get()
         
+        ## Close the Log file if opened
+        closeNotepadFile('LogFile.txt')
+        
         if resumedQueue == False:
             with open(TopLocation+'LogFile.txt','a') as f:                      # Append in the log file
                 f.write('+'*50+'\n'+'+'*50+
@@ -282,6 +273,8 @@ class ThreadedTask(threading.Thread):
             ## Report
             print('\n\n'+jobToRun.name+ ' launched')
             
+            ## Close the Log file if opened
+            closeNotepadFile('LogFile.txt')
             with open(TopLocation+'LogFile.txt','a') as f:                      # Write in Report File (Log File)
                 f.write('\n\n'+'-'*50+'\n'+jobToRun.name+
                     ' launched on '+
@@ -321,6 +314,8 @@ class ThreadedTask(threading.Thread):
             
             ## Report
             print('The PID of the command is: %s'%pid)
+            # Close the Log file if opened
+            closeNotepadFile('LogFile.txt')
             with open(TopLocation+'LogFile.txt','a') as f:
                 f.write('The PID of the command is: %s\n\n'%pid)
             
@@ -393,9 +388,11 @@ class ThreadedTask(threading.Thread):
                         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())+
                         '\n'+'+'*50+'\n\n')
             
+            # Close the Log file if opened
+            closeNotepadFile('LogFile.txt')
             try:
                 if (newJobList!='' or jobList!=''):
-                    os.system("start "+TopLocation+'LogFile.txt')               # Open the report file in a window
+                    subprocess.Popen("Notepad "+TopLocation+'LogFile.txt')               # Open the report file in a window
             except UnboundLocalError:
                 print('The job queue was empty.')
                 pass
@@ -628,20 +625,19 @@ class App(Frame):
         Separator(self,orient=HORIZONTAL).grid(row=incrementLoc, columnspan=5,
             sticky="ew", pady=2)
         
-        if PygtailImport == None:
-            ## Tail .MSG File
-            # Button
-            incrementLoc=incrementLoc+1
-            self.tailMsgFileButton = Button(self, text='Msg File',
-                                            command=self.tailMsgFile,)
-            self.tailMsgFileButton.grid(row=incrementLoc, column=0, 
-                                        columnspan=3, ipadx=20, pady=4)
+        ## Tail .MSG File
+        # Button
+        incrementLoc=incrementLoc+1
+        self.tailMsgFileButton = Button(self, text='Msg File',
+                                        command=lambda: self.tailMsgFile('msg'),)
+        self.tailMsgFileButton.grid(row=incrementLoc, column=0, 
+                                    columnspan=3, ipadx=20, pady=4)
             
         
         ## Tail .STA File
         # Button
         self.tailStaFileButton = Button(self, text='Sta File',
-                                        command=self.tailStaFile,)
+                                        command=lambda: self.tailMsgFile('sta'),)
         self.tailStaFileButton.grid(row=incrementLoc, column=1, columnspan=3, 
                                     ipadx=20, pady=4)
         
@@ -913,7 +909,7 @@ class App(Frame):
         self.termJobsWindow.destroy()
 
 ###############################################################################
-    def tailMsgFile(self):
+    def tailMsgFile(self,ext):
         """Read the Msg file of the jobs that are running"""
         
         try:
@@ -934,20 +930,26 @@ class App(Frame):
             for proc in self.runningJobsListDict:
                 if proc['kind']=='standard.exe':
                     inpFileStr=''
-                    with open(proc['dir']+'\\'+proc['inp']+'.msg') as f:
-                        inpFile = f.readlines()
-                        for line in inpFile:
-                            inpFileStr = inpFileStr+line
-                    self.dispMsgFile(inpFileStr,'msg',proc['dir'],proc['inp'])
+                    try:
+                        with open(proc['dir']+'\\'+proc['inp']+'.'+ext) as f:
+                            inpFile = f.readlines()
+                            for line in inpFile:
+                                inpFileStr = inpFileStr+line
+                        self.dispMsgFile(inpFileStr,ext,proc['dir'],proc['inp'])
+                    except IOError:
+                        self.displayErrorWindow('Please wait for %s.%s to be created'%(proc['inp'],ext),destroy=False)
                 elif proc['kind']=='explicit.exe' or proc['kind']=='explicit_dp.exe':
                     inpFileStr=''
-                    with open(proc['dir']+'\\'+proc['inp']+'.sta') as f:
-                        inpFile = f.readlines()
-                        for line in inpFile:
-                            inpFileStr = inpFileStr+line
-                    self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
+                    try:
+                        with open(proc['dir']+'\\'+proc['inp']+'.sta') as f:
+                            inpFile = f.readlines()
+                            for line in inpFile:
+                                inpFileStr = inpFileStr+line
+                        self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
+                    except IOError:
+                        self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
                 elif proc['kind']=='pre.exe':
-                    self.displayErrorWindow('Please wait for %s.msg to be created'%proc['inp'],destroy=False)
+                    self.displayErrorWindow('Please wait for %s.msg or %s.sta to be created'%(proc['inp'],proc['inp']),destroy=False)
 
 ###############################################################################
     def tailLogFile(self):
@@ -987,51 +989,7 @@ class App(Frame):
         with open(TopLocation+'LogFile.txt','w') as f:
             f.write('')
         self.dispMsgFile('','log','')
-
-###############################################################################
-    def tailStaFile(self):
-        """Read the sta file"""
         
-        try:
-            for window in self.dispMsgFileWindow:
-                window.destroy()
-        except:
-            pass
-        
-        try:
-            self.errWindow.destroy()
-        except:
-            pass
-        
-        if self.runningJobsListDict==[]:
-            self.displayErrorWindow('No sta file could be found. Please make sure that at least one job is running and that its sta file has been created')
-        else:
-            self.dispMsgFileWindow = []
-            self.incrementMsgFile = 0
-            for proc in self.runningJobsListDict:
-                if proc['kind']=='standard.exe':
-                    try:
-                        inpFileStr=''
-                        with open(proc['dir']+'\\'+proc['inp']+'.sta') as f:
-                            inpFile = f.readlines()
-                            for line in inpFile:
-                                inpFileStr = inpFileStr+line
-                        self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
-                    except:
-                        self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
-                elif proc['kind']=='explicit.exe' or proc['kind']=='explicit_dp.exe':
-                    try:
-                        inpFileStr=''
-                        with open(proc['dir']+'\\'+proc['inp']+'.sta') as f:
-                            inpFile = f.readlines()
-                            for line in inpFile:
-                                inpFileStr = inpFileStr+line
-                        self.dispMsgFile(inpFileStr,'sta',proc['dir'],proc['inp'])
-                    except:
-                        self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
-                elif proc['kind']=='pre.exe':
-                    self.displayErrorWindow('Please wait for %s.sta to be created'%proc['inp'],destroy=False)
-
 ###############################################################################
     def dispMsgFile(self, msgFileStr,fileType,Path,fileName='File'):
         """Display the content of the msg file, sta file or log file"""
@@ -1251,6 +1209,10 @@ class App(Frame):
                     self.runningJobs.insert(END, proc)
                     self.runningJobs.see(END)
             
+            with open(TopLocation+'RunningJobList.txt','w') as f:
+                for proc in self.runningJobsListStr:
+                    f.write(proc)                    
+            
             textBoxChanged=False
             try:
                 self.jobListTextBox = self.fileList.get("1.0",END)              # Read the console
@@ -1293,7 +1255,6 @@ class App(Frame):
                     self.runningQueueTextFile = f.read()
                     if self.QueueRunning == False and eval(self.runningQueueTextFile) == True:
                         self.runQueueFunc()
-                    #print(self.QueueRunning)
             except IOError:
                 with open(TopLocation+'RunQueue.txt','w') as f:                 # If the runQueue file doesnt exist, create it
                     f.write('Not running')
@@ -1321,7 +1282,6 @@ class App(Frame):
         while 1:
             with open(Path+'\\'+fileName+'.'+fileType,'r') as f:
                 newDoc=f.read()
-                #if newDoc.startswith(Doc):
                 upLines = newDoc[len(Doc):]
                 newDoc=newDoc+upLines
                 Doc=newDoc
@@ -1330,8 +1290,8 @@ class App(Frame):
                     self.listbox[inc].insert(END, upLines)
                     self.listbox[inc].see(END)
                 except:
+                    self.destroyTailedFile(inc)
                     break
-                    pass
                 upLines=''
             
 ##################################################s#############################
@@ -1341,6 +1301,12 @@ class App(Frame):
         print("Uncaught exception at line %s: %s: %s"%(traceback.extract_tb(tb)[-1][1],type.__name__,value))
     sys.excepthook = my_handler
     
+def closeNotepadFile(textFile):
+    pList=psutil.pids()
+    for proc in pList:
+        p=psutil.Process(proc)
+        if p.name()=='notepad.exe' and p.cmdline()[1]==TopLocation+textFile:
+                os.kill(int(proc), signal.SIGTERM)
     
 def main():
 ###############################################################################
