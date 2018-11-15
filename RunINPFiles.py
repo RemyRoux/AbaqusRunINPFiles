@@ -1303,10 +1303,14 @@ class App(Frame):
     
 def closeNotepadFile(textFile):
     pList=psutil.pids()
+    
     for proc in pList:
-        p=psutil.Process(proc)
-        if p.name()=='notepad.exe' and p.cmdline()[1]==TopLocation+textFile:
-                os.kill(int(proc), signal.SIGTERM)
+        try:
+            p=psutil.Process(proc)
+            if p.name()=='notepad.exe' and p.cmdline()[1]==TopLocation+textFile:
+                    os.kill(int(proc), signal.SIGTERM)
+        except AccessDenied:
+            pass
     
 def main():
 ###############################################################################
