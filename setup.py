@@ -23,7 +23,7 @@ VERSION = 0.1
 # What packages are required for this module to be executed?
 REQUIRED = [
     # 'requests', 'maya', 'records',
-    'pywin32','RunINPFiles.py'
+    'pywin32','AbaqusRunINPFiles.git'
 ]
 
 # What packages are optional?
