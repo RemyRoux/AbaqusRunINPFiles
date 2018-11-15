@@ -1,4 +1,4 @@
-# Abaqus-RunINPFiles
+# Abaqus_RunINPFiles
 GUI to handle job queues in Abaqus
 
 # Prerequisites:
